@@ -18,16 +18,15 @@ const sequelize = process.env.DATABASE_URL
       });
 
 const connectDatabase = async () => {
-    try {
-        await sequelize.authenticate();
-        const dialect = sequelize.getDialect();
-        console.log(`✅ ${dialect.toUpperCase()} Database Connected`);
+    await sequelize.authenticate();
+    const dialect = sequelize.getDialect();
+    console.log(`✅ ${dialect.toUpperCase()} Database Connected`);
 
+    if (process.env.DB_SYNC === "true") {
         await sequelize.sync({ alter: process.env.NODE_ENV === "development" });
         console.log("✅ Database Synced");
-    } catch (error) {
-        console.error("❌ Database Connection Failed:", error.message);
-        console.log("⚠️  Server will continue running without database");
+    } else {
+        console.log("⏩ Database sync skipped (set DB_SYNC=true to enable)");
     }
 };
 

@@ -1,4 +1,5 @@
 import config from "../config/env.js";
+import { sequelize } from "../config/database.js";
 
 const healthCheck = async (req, res) => {
     const health = {
@@ -10,10 +11,11 @@ const healthCheck = async (req, res) => {
     };
 
     try {
-        const mongoose = await import("mongoose");
-        health.database = mongoose.default.connection.readyState === 1 ? "connected" : "disconnected";
+        await sequelize.authenticate();
+        health.database = "connected";
     } catch {
-        health.database = "error";
+        health.database = "disconnected";
+        health.status = "degraded";
     }
 
     const statusCode = health.database === "connected" ? 200 : 503;
