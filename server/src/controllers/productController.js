@@ -34,8 +34,10 @@ export const getProducts = async (req, res, next) => {
             where.name = { [Op.like]: '%' + search + '%' };
         }
 
+        const allowedSortFields = ['id', 'name', 'price', 'createdAt', 'averageRating', 'stock'];
+        const rawSortField = sort.replace('-', '');
+        const orderField = allowedSortFields.includes(rawSortField) ? rawSortField : 'createdAt';
         const orderDir = sort.startsWith('-') ? 'DESC' : 'ASC';
-        const orderField = sort.replace('-', '');
         const order = [[orderField, orderDir]];
 
         const total = await Product.count({ where });
@@ -108,6 +110,15 @@ export const getProductBySlug = async (req, res, next) => {
 export const createProduct = async (req, res, next) => {
     try {
         const { name, description, price, discountPrice, images, categoryId, colors, sizes, stock, isFeatured, isActive } = req.body;
+
+        const category = await Category.findByPk(categoryId);
+        if (!category) {
+            return res.status(400).json({
+                success: false,
+                message: "Invalid categoryId: category not found",
+            });
+        }
+
         const product = await Product.create({ name, description, price, discountPrice, images, categoryId, colors, sizes, stock, isFeatured, isActive });
 
         res.status(201).json({
@@ -132,6 +143,17 @@ export const updateProduct = async (req, res, next) => {
         }
 
         const { name, description, price, discountPrice, images, categoryId, colors, sizes, stock, isFeatured, isActive } = req.body;
+
+        if (categoryId) {
+            const category = await Category.findByPk(categoryId);
+            if (!category) {
+                return res.status(400).json({
+                    success: false,
+                    message: "Invalid categoryId: category not found",
+                });
+            }
+        }
+
         await product.update({ name, description, price, discountPrice, images, categoryId, colors, sizes, stock, isFeatured, isActive });
 
         res.status(200).json({
