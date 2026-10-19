@@ -31,6 +31,9 @@ import errorHandler from "./middleware/errorHandler.js";
 
 const app = express();
 
+// Trust proxy (Railway / Vercel) so req.ip and secure-cookie detection work
+app.set("trust proxy", true);
+
 app.use(helmet({
     contentSecurityPolicy: false,
     crossOriginEmbedderPolicy: false,

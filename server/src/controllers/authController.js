@@ -42,7 +42,10 @@ export const login = async (req, res, next) => {
             });
         }
 
-        const user = await User.findOne({ where: { email } });
+        const user = await User.findOne({
+            where: { email },
+            attributes: { include: ['password'] },
+        });
         if (!user) {
             return res.status(401).json({
                 success: false,
@@ -72,11 +75,13 @@ export const login = async (req, res, next) => {
 };
 
 export const logout = async (req, res) => {
+    const isProduction = process.env.NODE_ENV === "production";
     res.cookie("token", "", {
         httpOnly: true,
-        secure: process.env.NODE_ENV === "production",
-        sameSite: "strict",
+        secure: isProduction,
+        sameSite: isProduction ? "none" : "lax",
         expires: new Date(0),
+        path: "/",
     });
 
     res.status(200).json({
@@ -126,7 +131,9 @@ export const updatePassword = async (req, res, next) => {
             });
         }
 
-        const user = await User.findByPk(req.user.id);
+        const user = await User.findByPk(req.user.id, {
+            attributes: { include: ['password'] },
+        });
 
         const isMatch = await user.comparePassword(currentPassword);
         if (!isMatch) {
