@@ -3,7 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag, Check, Star } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { imageUrl } from '../services/imageUrl';
-import api from '../services/api';
+import { productService } from '../services/products';
 import { ProductPageSkeleton } from '../components/Skeleton';
 import WishlistButton from '../components/WishlistButton';
 import './ProductDetail.css';
@@ -25,10 +25,10 @@ export default function ProductDetail() {
   useEffect(() => {
     setLoading(true);
     setError('');
-    api.get(`/products/slug/${slug}`)
+    productService.getProductBySlug(slug)
       .then((res) => {
-        setProduct(res.data.product);
-        const p = res.data.product;
+        setProduct(res.product);
+        const p = res.product;
         if (p.colors?.length) setSelectedColor(p.colors[0]);
         if (p.sizes?.length === 1) setSelectedSize(p.sizes[0]);
       })

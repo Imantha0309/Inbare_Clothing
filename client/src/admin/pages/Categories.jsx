@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Package, X } from 'lucide-react';
-import api from '../../services/api';
+import { adminService } from '../../services/adminService';
 import { imageUrl } from '../../services/imageUrl';
 import CategoryForm from './CategoryForm';
 import './Categories.css';
@@ -16,8 +16,8 @@ export default function Categories() {
     const fetchCategories = useCallback(async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/categories', { params: { withCount: 'true' } });
-            setCategories(data.categories || []);
+            const cats = await adminService.getCategories({ withCount: true });
+            setCategories(cats);
         } catch (err) {
             console.error('Failed to load categories:', err);
         } finally {
@@ -33,7 +33,7 @@ export default function Categories() {
 
     const handleDelete = async (id) => {
         try {
-            await api.delete(`/categories/${id}`);
+            await adminService.deleteCategory(id);
             setDeleteConfirm(null);
             fetchCategories();
         } catch (err) {
@@ -125,7 +125,7 @@ export default function Categories() {
                                     title={cat.isActive ? 'Deactivate' : 'Activate'}
                                     onClick={async () => {
                                         try {
-                                            await api.put(`/categories/${cat._id}`, { isActive: !cat.isActive });
+                                            await adminService.toggleCategory(cat._id, !cat.isActive);
                                             fetchCategories();
                                         } catch (err) {
                                             console.error('Toggle failed:', err);

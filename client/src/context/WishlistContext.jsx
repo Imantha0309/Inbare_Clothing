@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useCallback } from 'react';
-import api from '../services/api';
+import { Parse } from '../services/parse.js';
 import { useAuth } from './AuthContext';
 
 const WishlistContext = createContext();
@@ -9,6 +9,20 @@ export function WishlistProvider({ children }) {
     const [items, setItems] = useState([]);
     const [loading, setLoading] = useState(false);
 
+    const getUserWishlist = async () => {
+        const Wishlist = Parse.Object.extend('Wishlist');
+        const query = new Parse.Query(Wishlist);
+        query.equalTo('user', Parse.User.current());
+        const results = await query.find();
+        if (results.length > 0) {
+            return results[0];
+        }
+        const newWishlist = new Wishlist();
+        newWishlist.set('user', Parse.User.current());
+        newWishlist.set('products', []);
+        return await newWishlist.save();
+    };
+
     const fetchWishlist = useCallback(async () => {
         if (!user) {
             setItems([]);
@@ -16,8 +30,9 @@ export function WishlistProvider({ children }) {
         }
         setLoading(true);
         try {
-            const res = await api.get('/wishlist/my');
-            setItems(res.data.wishlist?.products || []);
+            const wishlist = await getUserWishlist();
+            const products = wishlist.get('products') || [];
+            setItems(products);
         } catch {
             setItems([]);
         } finally {
@@ -32,16 +47,28 @@ export function WishlistProvider({ children }) {
     async function toggleWishlist(productId) {
         if (!user) return;
         try {
-            const res = await api.post('/wishlist/toggle', { productId });
-            setItems(res.data.wishlist?.products || []);
-            return res.data;
+            const wishlist = await getUserWishlist();
+            const products = wishlist.get('products') || [];
+            if (products.includes(productId)) {
+                const updated = products.filter((id) => id !== productId);
+                wishlist.set('products', updated);
+                await wishlist.save();
+                setItems(updated);
+                return { data: { wishlist: { products: updated }, message: 'Product removed from wishlist' } };
+            } else {
+                const updated = [...products, productId];
+                wishlist.set('products', updated);
+                await wishlist.save();
+                setItems(updated);
+                return { data: { wishlist: { products: updated }, message: 'Product added to wishlist' } };
+            }
         } catch (err) {
             console.error('Toggle wishlist failed:', err);
         }
     }
 
     function isInWishlist(productId) {
-        return items.some((p) => (p._id || p) === productId);
+        return items.some((p) => (p && p.objectId) === productId || p === productId);
     }
 
     return (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import api from '../services/api';
+import { categoryService } from '../services/products';
 import { imageUrl } from '../services/imageUrl';
 
 const fallbackCategories = [
@@ -10,7 +10,7 @@ const fallbackCategories = [
   { _id: '4', name: 'Accessories', slug: 'accessories', image: 'https://images.unsplash.com/photo-1611085583191-a3b181a88401?q=80&w=800' },
 ];
 
-// Resolve category image: could be a GridFS ObjectId or already a full URL
+// Resolve category image: could be a Parse.File URL or already a full URL
 function getCategoryImage(image) {
   if (!image) return null;
   if (typeof image === 'string' && image.startsWith('http')) return image;
@@ -22,10 +22,10 @@ function Categories() {
   const [categories, setCategories] = useState(fallbackCategories);
 
   useEffect(() => {
-    api.get('/categories')
-      .then((res) => {
-        if (res.data.categories.length > 0) {
-          setCategories(res.data.categories);
+    categoryService.getAll()
+      .then((cats) => {
+        if (cats.length > 0) {
+          setCategories(cats);
         }
       })
       .catch(() => {});

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Plus, Search, Edit2, Trash2, Eye, EyeOff, Star, ChevronLeft, ChevronRight, X } from 'lucide-react';
-import api from '../../services/api';
+import { adminService } from '../../services/adminService';
 import { imageUrl } from '../../services/imageUrl';
 import ProductForm from './ProductForm';
 import './Products.css';
@@ -22,13 +22,17 @@ export default function Products() {
     const fetchProducts = useCallback(async () => {
         setLoading(true);
         try {
-            const params = { page, limit, all: 'true', sort: '-createdAt' };
-            if (search) params.search = search;
-            if (categoryFilter) params.category = categoryFilter;
-            const { data } = await api.get('/products', { params });
-            setProducts(data.products);
-            setTotalPages(data.totalPages);
-            setTotal(data.total);
+            const res = await adminService.getProducts({
+                page,
+                limit,
+                all: 'true',
+                sort: '-createdAt',
+                search: search || undefined,
+                category: categoryFilter || undefined,
+            });
+            setProducts(res.products);
+            setTotalPages(res.totalPages);
+            setTotal(res.total);
         } catch (err) {
             console.error('Failed to load products:', err);
         } finally {
@@ -38,8 +42,8 @@ export default function Products() {
 
     const fetchCategories = async () => {
         try {
-            const { data } = await api.get('/categories');
-            setCategories(data.categories || data.data || []);
+            const cats = await adminService.getCategories();
+            setCategories(cats);
         } catch (err) {
             console.error('Failed to load categories:', err);
         }
@@ -55,7 +59,7 @@ export default function Products() {
 
     const handleDelete = async (id) => {
         try {
-            await api.delete(`/products/${id}`);
+            await adminService.deleteProduct(id);
             setDeleteConfirm(null);
             fetchProducts();
         } catch (err) {
@@ -168,11 +172,11 @@ export default function Products() {
                                         <td className="admin-products__cell-price">
                                             {p.discountPrice > 0 && p.discountPrice < p.price ? (
                                                 <>
-                                                    <span className="admin-products__discount">${p.discountPrice.toFixed(2)}</span>
-                                                    <span className="admin-products__orig">${p.price.toFixed(2)}</span>
+                                                    <span className="admin-products__discount">${Number(p.discountPrice).toFixed(2)}</span>
+                                                    <span className="admin-products__orig">${Number(p.price).toFixed(2)}</span>
                                                 </>
                                             ) : (
-                                                <span>${p.price.toFixed(2)}</span>
+                                                <span>${Number(p.price).toFixed(2)}</span>
                                             )}
                                         </td>
                                         <td className="admin-products__cell-stock">
@@ -181,7 +185,7 @@ export default function Products() {
                                             </span>
                                         </td>
                                         <td className="admin-products__cell-rating">
-                                            {p.averageRating > 0 ? `${p.averageRating.toFixed(1)} (${p.numReviews})` : '—'}
+                                            {p.averageRating > 0 ? `${Number(p.averageRating).toFixed(1)} (${p.numReviews})` : '—'}
                                         </td>
                                         <td className="admin-products__cell-status">
                                             <span className={`admin-products__badge ${p.isActive ? 'active' : 'inactive'}`}>
@@ -196,7 +200,7 @@ export default function Products() {
                                                 title={p.isActive ? 'Deactivate' : 'Activate'}
                                                 onClick={async () => {
                                                     try {
-                                                        await api.put(`/products/${p._id}`, { isActive: !p.isActive });
+                                                        await adminService.toggleProduct(p._id, !p.isActive);
                                                         fetchProducts();
                                                     } catch (err) {
                                                         console.error('Toggle failed:', err);

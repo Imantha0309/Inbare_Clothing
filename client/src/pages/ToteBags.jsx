@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, ShoppingBag, Check } from 'lucide-react';
 import { useCart } from '../context/CartContext';
-import api from '../services/api';
+import { productService } from '../services/products';
 import { imageUrl } from '../services/imageUrl';
 import { ToteCardSkeleton } from '../components/Skeleton';
 import './ToteBags.css';
@@ -15,7 +15,9 @@ function ToteCard({ tote }) {
   const [hover, setHover] = useState(false);
 
   const img = imageUrl(tote.images?.[0]) || 'https://images.unsplash.com/photo-1544816155-12df9643f363?q=80&w=600';
-  const price = tote.discountPrice && tote.discountPrice < tote.price ? tote.discountPrice : tote.price;
+  const price = Number(tote.discountPrice) && Number(tote.discountPrice) < Number(tote.price)
+    ? Number(tote.discountPrice)
+    : Number(tote.price);
 
   function handleAdd() {
     addToCart({
@@ -88,9 +90,10 @@ export default function ToteBags() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/products?limit=50')
+    productService.getProducts({ limit: 50 })
       .then((res) => {
-        const toteProducts = res.data.products.filter(
+        const allProducts = res.products;
+        const toteProducts = allProducts.filter(
           (p) => p.category?.name?.toLowerCase().includes('tote') ||
                  p.name?.toLowerCase().includes('tote') ||
                  p.category?.slug?.includes('tote')
@@ -98,7 +101,7 @@ export default function ToteBags() {
         if (toteProducts.length > 0) {
           setTotes(toteProducts);
         } else {
-          setTotes(res.data.products.slice(0, 10));
+          setTotes(allProducts.slice(0, 10));
         }
       })
       .catch(() => {})

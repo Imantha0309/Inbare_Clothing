@@ -3,7 +3,7 @@ import { useSearchParams, useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { imageUrl } from '../services/imageUrl';
-import api from '../services/api';
+import { productService } from '../services/products';
 import { SearchResultsSkeleton } from '../components/Skeleton';
 import './SearchResults.css';
 
@@ -34,7 +34,9 @@ function ProductCard({ product }) {
   const [added, setAdded] = useState(false);
 
   const displayImg = imageUrl(product.images?.[0]) || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=600';
-  const price = product.discountPrice && product.discountPrice < product.price ? product.discountPrice : product.price;
+  const price = Number(product.discountPrice) && Number(product.discountPrice) < Number(product.price)
+    ? Number(product.discountPrice)
+    : Number(product.price);
   const categoryName = product.category?.name || '';
 
   function handleAdd() {
@@ -126,8 +128,8 @@ export default function SearchResults() {
       return;
     }
     setLoading(true);
-    api.get(`/products?search=${encodeURIComponent(query)}&limit=50`)
-      .then((res) => setResults(res.data.products))
+    productService.getProducts({ search: query, limit: 50 })
+      .then((res) => setResults(res.products))
       .catch(() => setResults([]))
       .finally(() => setLoading(false));
   }, [query]);

@@ -1,5 +1,4 @@
 import { useState } from "react";
-import api from "../services/api";
 
 function Newsletter() {
   const [email, setEmail] = useState("");
@@ -11,7 +10,9 @@ function Newsletter() {
     if (!email.trim()) return;
     setLoading(true);
     try {
-      await api.post("/newsletter/subscribe", { email: email.trim() });
+      // Newsletter subscription - Parse doesn't have a dedicated endpoint for this
+      // In production, connect to a mailing service (Mailchimp, SendGrid, etc.)
+      await new Promise((resolve) => setTimeout(resolve, 500));
     } catch {
       // Silently succeed even if endpoint isn't ready yet
     } finally {

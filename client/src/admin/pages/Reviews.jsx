@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Star, Trash2, Search, X, ChevronLeft, ChevronRight } from 'lucide-react';
-import api from '../../services/api';
+import { adminService } from '../../services/adminService';
 import { imageUrl } from '../../services/imageUrl';
 import './Reviews.css';
 
@@ -19,12 +19,14 @@ export default function Reviews() {
     const fetchReviews = useCallback(async () => {
         setLoading(true);
         try {
-            const params = { page, limit };
-            if (ratingFilter) params.rating = ratingFilter;
-            const { data } = await api.get('/reviews', { params });
-            setReviews(data.reviews);
-            setTotalPages(data.totalPages);
-            setTotal(data.total);
+            const res = await adminService.getReviews({
+                page,
+                limit,
+                rating: ratingFilter || undefined,
+            });
+            setReviews(res.reviews);
+            setTotalPages(res.totalPages);
+            setTotal(res.total);
         } catch (err) {
             console.error('Failed to load reviews:', err);
         } finally {
@@ -36,7 +38,7 @@ export default function Reviews() {
 
     const handleDelete = async (id) => {
         try {
-            await api.delete(`/reviews/${id}`);
+            await adminService.deleteReview(id);
             setDeleteConfirm(null);
             fetchReviews();
         } catch (err) {

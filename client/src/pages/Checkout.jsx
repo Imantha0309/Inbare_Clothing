@@ -3,7 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Lock, Info, Tag, X } from 'lucide-react';
 import { useCart } from '../context/CartContext';
 import { useAuth } from '../context/AuthContext';
-import api from '../services/api';
+import { orderService } from '../services/orders';
+import { couponService } from '../services/orders';
 import './Checkout.css';
 
 export default function Checkout() {
@@ -48,7 +49,7 @@ export default function Checkout() {
     setCouponLoading(true);
     setCouponError('');
     try {
-      const res = await api.post('/coupons/validate', { code: couponCode.trim() });
+      const res = await couponService.validateCoupon({ code: couponCode.trim() });
       setAppliedCoupon(res.data.coupon);
     } catch (err) {
       setCouponError(err.response?.data?.message || 'Invalid coupon');
@@ -80,7 +81,7 @@ export default function Checkout() {
 
     setLoading(true);
     try {
-      await api.post('/orders', {
+      await orderService.createOrder({
         shippingAddress: { street: address, city, state, zipCode, country },
         paymentMethod,
         note,

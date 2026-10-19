@@ -3,7 +3,7 @@ import { useNavigate, Link } from 'react-router-dom';
 import { ArrowLeft, Package, ChevronDown, ChevronUp } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { imageUrl } from '../services/imageUrl';
-import api from '../services/api';
+import { orderService } from '../services/orders';
 import './Orders.css';
 
 const statusColors = {
@@ -24,8 +24,8 @@ export default function Orders() {
   useEffect(() => {
     if (!user) return;
     setLoading(true);
-    api.get('/orders/my-orders')
-      .then((res) => setOrders(res.data.orders || []))
+    orderService.getMyOrders({ page: 1, limit: 10 })
+      .then((res) => setOrders(res.orders || []))
       .catch(() => setOrders([]))
       .finally(() => setLoading(false));
   }, [user]);

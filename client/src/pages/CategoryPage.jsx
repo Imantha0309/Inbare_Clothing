@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useCart } from '../context/CartContext';
-import api from '../services/api';
+import { productService, categoryService } from '../services/products';
 import { imageUrl } from '../services/imageUrl';
 import { ProductGridSkeleton } from '../components/Skeleton';
 import './CategoryPage.css';
@@ -42,7 +42,9 @@ function ProductCard({ product }) {
   const [added, setAdded] = useState(false);
 
   const displayImg = imageUrl(product.images?.[0]) || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=600';
-  const price = product.discountPrice && product.discountPrice < product.price ? product.discountPrice : product.price;
+  const price = Number(product.discountPrice) && Number(product.discountPrice) < Number(product.price)
+    ? Number(product.discountPrice)
+    : Number(product.price);
 
   function handleAdd() {
     if (!selectedSize) return;
@@ -130,18 +132,18 @@ function CategoryPage() {
 
   useEffect(() => {
     setLoading(true);
-    api.get(`/categories`)
-      .then((res) => {
-        const cat = res.data.categories.find((c) => c.slug === slug);
+    categoryService.getAll()
+      .then((categories) => {
+        const cat = categories.find((c) => c.slug === slug);
         if (cat) {
           setCategoryName(cat.name);
-          return api.get(`/products?category=${cat._id}&limit=50`);
+          return productService.getProducts({ category: cat._id, limit: 50 });
         }
         setCategoryName(slug);
-        return api.get(`/products?limit=50`);
+        return productService.getProducts({ limit: 50 });
       })
       .then((res) => {
-        if (res) setProducts(res.data.products);
+        if (res) setProducts(res.products);
       })
       .catch(() => {
         setProducts([]);
@@ -154,7 +156,7 @@ function CategoryPage() {
   const range = priceRanges[priceIdx];
 
   const filtered = products.filter((p) => {
-    const inPrice = p.price >= range.min && p.price < range.max;
+    const inPrice = Number(p.price) >= range.min && Number(p.price) < range.max;
     const inSize = sizeFilter === 'All' || (p.sizes || []).includes(sizeFilter);
     const inColor = colorFilter === 'All' || (p.colors || []).includes(colorFilter);
     return inPrice && inSize && inColor;

@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Package, Users, ShoppingCart, DollarSign, AlertTriangle, TrendingUp } from 'lucide-react';
-import api from '../../services/api';
+import { adminService } from '../../services/adminService';
 import './Dashboard.css';
 
 export default function Dashboard() {
@@ -10,8 +10,8 @@ export default function Dashboard() {
     const navigate = useNavigate();
 
     useEffect(() => {
-        api.get('/admin/dashboard')
-            .then((res) => setStats(res.data.stats))
+        adminService.getDashboardStats()
+            .then((res) => setStats(res.stats))
             .catch(() => {})
             .finally(() => setLoading(false));
     }, []);
@@ -122,7 +122,7 @@ export default function Dashboard() {
                                         {order.orderStatus}
                                     </span>
                                 </span>
-                                <span className="dash-order-amount">LKR {order.totalAmount.toLocaleString()}</span>
+                                <span className="dash-order-amount">LKR {Number(order.totalAmount).toLocaleString()}</span>
                             </div>
                         ))}
                         {stats.recentOrders.length === 0 && (

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import api from '../services/api';
+import { productService } from '../services/products';
 import { imageUrl } from '../services/imageUrl';
 import { ProductCardSkeleton } from './Skeleton';
 
@@ -9,8 +9,8 @@ function NewArrivals() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get('/products?sort=-createdAt&limit=4')
-      .then((res) => setProducts(res.data.products))
+    productService.getProducts({ sort: '-createdAt', limit: 4 })
+      .then((res) => setProducts(res.products))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, []);
@@ -53,7 +53,9 @@ function ArrivalCard({ product }) {
   const img = imageUrl(product.images?.[0]) || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800';
   const hoverImg = imageUrl(product.images?.[1]) || img;
   const displayImg = isHovered && product.images?.length > 1 ? hoverImg : img;
-  const price = product.discountPrice && product.discountPrice < product.price ? product.discountPrice : product.price;
+  const price = Number(product.discountPrice) && Number(product.discountPrice) < Number(product.price)
+    ? Number(product.discountPrice)
+    : Number(product.price);
 
   return (
     <Link to={`/product/${product.slug}`} className="arrival-card"

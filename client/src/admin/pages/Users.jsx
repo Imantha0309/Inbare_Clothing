@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, Edit2, Trash2, Eye, EyeOff, Shield, User, Mail, Phone, MapPin, X, Loader2 } from 'lucide-react';
-import api from '../../services/api';
+import { adminService } from '../../services/adminService';
 import './Users.css';
 
 export default function Users() {
@@ -18,12 +18,14 @@ export default function Users() {
     const fetchUsers = useCallback(async () => {
         setLoading(true);
         try {
-            const params = { page, limit };
-            if (roleFilter) params.role = roleFilter;
-            const { data } = await api.get('/users', { params });
-            setUsers(data.users);
-            setTotalPages(data.totalPages);
-            setTotal(data.total);
+            const res = await adminService.getUsers({
+                page,
+                limit,
+                role: roleFilter || undefined,
+            });
+            setUsers(res.users);
+            setTotalPages(res.totalPages);
+            setTotal(res.total);
         } catch (err) {
             console.error('Failed to load users:', err);
         } finally {
@@ -45,7 +47,7 @@ export default function Users() {
 
     const handleDelete = async (id) => {
         try {
-            await api.delete(`/users/${id}`);
+            await adminService.deleteUser(id);
             setDeleteConfirm(null);
             fetchUsers();
         } catch (err) {
@@ -55,7 +57,7 @@ export default function Users() {
 
     const toggleActive = async (user) => {
         try {
-            await api.put(`/users/${user._id}`, { isActive: !user.isActive });
+            await adminService.updateUser(user._id, { isActive: !user.isActive });
             fetchUsers();
         } catch (err) {
             console.error('Toggle failed:', err);
@@ -147,16 +149,16 @@ export default function Users() {
                                             <span className="admin-users__meta-value">{u.phone}</span>
                                         </div>
                                     )}
-                                    {u.address?.city && (
+                                    {u.city && (
                                         <div className="admin-users__meta-row">
                                             <span className="admin-users__meta-label">Location</span>
-                                            <span className="admin-users__meta-value">{u.address.city}{u.address.state ? `, ${u.address.state}` : ''}</span>
+                                            <span className="admin-users__meta-value">{u.city}{u.state ? `, ${u.state}` : ''}</span>
                                         </div>
                                     )}
                                     <div className="admin-users__meta-row">
                                         <span className="admin-users__meta-label">Email Verified</span>
-                                        <span className={`admin-users__verified ${u.isEmailVerified ? 'yes' : 'no'}`}>
-                                            {u.isEmailVerified ? 'Verified' : 'Unverified'}
+                                        <span className={`admin-users__verified ${u.emailVerified ? 'yes' : 'no'}`}>
+                                            {u.emailVerified ? 'Verified' : 'Unverified'}
                                         </span>
                                     </div>
                                 </div>
@@ -245,10 +247,10 @@ function UserEditModal({ user, onClose, onSuccess }) {
         setSubmitting(true);
 
         try {
-            await api.put(`/users/${user._id}`, form);
+            await adminService.updateUser(user._id, form);
             onSuccess();
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to save user');
+            setError(err.message || 'Failed to save user');
         } finally {
             setSubmitting(false);
         }

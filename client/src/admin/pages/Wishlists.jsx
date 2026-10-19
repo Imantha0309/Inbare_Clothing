@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Heart, Trash2, Search, X, ChevronLeft, ChevronRight, Package } from 'lucide-react';
-import api from '../../services/api';
+import { adminService } from '../../services/adminService';
 import { imageUrl } from '../../services/imageUrl';
 import './Wishlists.css';
 
@@ -16,10 +16,10 @@ export default function Wishlists() {
     const fetchWishlists = useCallback(async () => {
         setLoading(true);
         try {
-            const { data } = await api.get('/wishlist', { params: { page, limit } });
-            setWishlists(data.wishlists);
-            setTotalPages(data.totalPages);
-            setTotal(data.total);
+            const res = await adminService.getWishlists({ page, limit });
+            setWishlists(res.wishlists);
+            setTotalPages(res.totalPages);
+            setTotal(res.total);
         } catch (err) {
             console.error('Failed to load wishlists:', err);
         } finally {
@@ -119,13 +119,13 @@ export default function Wishlists() {
                                                 <div className="admin-wishlists__product-info">
                                                     <span className="admin-wishlists__product-name">{product.name}</span>
                                                     <span className="admin-wishlists__product-price">
-                                                        {product.discountPrice > 0 && product.discountPrice < product.price ? (
+                                                        {Number(product.discountPrice) > 0 && Number(product.discountPrice) < Number(product.price) ? (
                                                             <>
-                                                                <span className="discount">${product.discountPrice.toFixed(2)}</span>
-                                                                <span className="orig">${product.price.toFixed(2)}</span>
+                                                                <span className="discount">${Number(product.discountPrice).toFixed(2)}</span>
+                                                                <span className="orig">${Number(product.price).toFixed(2)}</span>
                                                             </>
                                                         ) : (
-                                                            `$${product.price.toFixed(2)}`
+                                                            `$${Number(product.price).toFixed(2)}`
                                                         )}
                                                     </span>
                                                 </div>

@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
-import api from '../../services/api';
+import { adminService } from '../../services/adminService';
 import { imageUrl } from '../../services/imageUrl';
 import './CategoryForm.css';
 
@@ -35,16 +35,10 @@ export default function CategoryForm({ category, onClose, onSuccess }) {
         setError('');
 
         try {
-            const formData = new FormData();
-            formData.append('images', file);
-
-            const { data } = await api.post('/products/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-
-            setImage(data.images[0]);
+            const imageUrl = await adminService.uploadFile(file);
+            setImage(imageUrl);
         } catch (err) {
-            setError(err.response?.data?.message || 'Image upload failed');
+            setError(err.message || 'Image upload failed');
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -66,14 +60,14 @@ export default function CategoryForm({ category, onClose, onSuccess }) {
             const payload = { ...form, image };
 
             if (isEdit) {
-                await api.put(`/categories/${category._id}`, payload);
+                await adminService.updateCategory(category._id, payload);
             } else {
-                await api.post('/categories', payload);
+                await adminService.createCategory(payload);
             }
 
             onSuccess();
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to save category');
+            setError(err.message || 'Failed to save category');
         } finally {
             setSubmitting(false);
         }

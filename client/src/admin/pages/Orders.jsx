@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react';
 import { Search, ChevronDown, ChevronUp, X, Truck, Package, CheckCircle, Clock, Ban, CreditCard } from 'lucide-react';
-import api from '../../services/api';
+import { adminService } from '../../services/adminService';
 import './Orders.css';
 
 const STATUS_OPTIONS = ['pending', 'processing', 'shipped', 'delivered', 'cancelled'];
@@ -30,12 +30,15 @@ export default function Orders() {
     const fetchOrders = useCallback(async () => {
         setLoading(true);
         try {
-            const params = { page, limit, sort: '-createdAt' };
-            if (statusFilter) params.status = statusFilter;
-            const { data } = await api.get('/orders', { params });
-            setOrders(data.orders);
-            setTotalPages(data.totalPages);
-            setTotal(data.total);
+            const res = await adminService.getOrders({
+                page,
+                limit,
+                sort: '-createdAt',
+                status: statusFilter || undefined,
+            });
+            setOrders(res.orders);
+            setTotalPages(res.totalPages);
+            setTotal(res.total);
         } catch (err) {
             console.error('Failed to load orders:', err);
         } finally {
@@ -48,8 +51,8 @@ export default function Orders() {
     const fetchDetail = async (id) => {
         setDetailLoading(true);
         try {
-            const { data } = await api.get(`/orders/${id}`);
-            setDetail(data.order);
+            const order = await adminService.getOrder(id);
+            setDetail(order);
         } catch (err) {
             console.error('Failed to load order detail:', err);
         } finally {
@@ -70,9 +73,7 @@ export default function Orders() {
     const updateStatus = async (orderId, field, value) => {
         setUpdating(true);
         try {
-            const payload = {};
-            payload[field] = value;
-            await api.put(`/orders/${orderId}/status`, payload);
+            await adminService.updateOrderStatus(orderId, { [field]: value });
             fetchDetail(orderId);
             fetchOrders();
         } catch (err) {
@@ -85,7 +86,7 @@ export default function Orders() {
     const cancelOrder = async (orderId) => {
         setUpdating(true);
         try {
-            await api.put(`/orders/${orderId}/cancel`);
+            await adminService.updateOrderStatus(orderId, { orderStatus: 'cancelled' });
             fetchDetail(orderId);
             fetchOrders();
         } catch (err) {
@@ -155,7 +156,7 @@ export default function Orders() {
                                     </div>
                                     <div className="admin-orders__cell-customer">{getCustomer(order)}</div>
                                     <div className="admin-orders__cell-items">{getItemsCount(order)} item{getItemsCount(order) !== 1 ? 's' : ''}</div>
-                                    <div className="admin-orders__cell-amount">${order.totalAmount.toFixed(2)}</div>
+                                    <div className="admin-orders__cell-amount">${Number(order.totalAmount).toFixed(2)}</div>
                                     <div className="admin-orders__cell-status">
                                         <span className={`admin-orders__badge order-${order.orderStatus}`}>
                                             {order.orderStatus}
@@ -179,9 +180,9 @@ export default function Orders() {
                                                     <div className="admin-orders__detail-section">
                                                         <h4>Shipping Address</h4>
                                                         <p>
-                                                            {detail.shippingAddress?.street}<br />
-                                                            {detail.shippingAddress?.city}, {detail.shippingAddress?.state} {detail.shippingAddress?.zipCode}<br />
-                                                            {detail.shippingAddress?.country}
+                                                            {detail.street}<br />
+                                                            {detail.city}, {detail.state} {detail.zipCode}<br />
+                                                            {detail.country}
                                                         </p>
                                                     </div>
                                                     <div className="admin-orders__detail-section">
@@ -251,12 +252,12 @@ export default function Orders() {
                                                                 </span>
                                                             </div>
                                                             <div className="admin-orders__item-price">
-                                                                ${item.price.toFixed(2)} × {item.quantity}
+                                                                ${Number(item.price).toFixed(2)} × {item.quantity}
                                                             </div>
                                                         </div>
                                                     ))}
                                                     <div className="admin-orders__total">
-                                                        Total: <strong>${detail.totalAmount.toFixed(2)}</strong>
+                                                        Total: <strong>${Number(detail.totalAmount).toFixed(2)}</strong>
                                                     </div>
                                                 </div>
                                             </>

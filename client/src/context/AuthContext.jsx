@@ -1,5 +1,5 @@
 import { createContext, useContext, useState, useEffect, useRef } from 'react';
-import api from '../services/api';
+import { Parse } from '../services/parse.js';
 
 const AuthContext = createContext();
 
@@ -12,64 +12,129 @@ export function AuthProvider({ children }) {
         fetchCartRef.current = fn;
     }
 
+    // Transform Parse User object to a plain JSON-serializable shape
+    const serializeUser = (parseUser) => {
+        if (!parseUser) return null;
+        return {
+            id: parseUser.id,
+            username: parseUser.get('username'),
+            email: parseUser.get('email'),
+            firstName: parseUser.get('firstName'),
+            lastName: parseUser.get('lastName'),
+            role: parseUser.get('role'),
+            phone: parseUser.get('phone'),
+            street: parseUser.get('street'),
+            city: parseUser.get('city'),
+            state: parseUser.get('state'),
+            zipCode: parseUser.get('zipCode'),
+            country: parseUser.get('country'),
+            avatar: parseUser.get('avatar'),
+            isEmailVerified: parseUser.get('emailVerified'),
+            isActive: parseUser.get('isActive'),
+            createdAt: parseUser.createdAt,
+            updatedAt: parseUser.updatedAt,
+        };
+    };
+
     useEffect(() => {
-        const stored = localStorage.getItem('user');
-        if (stored) {
-            setUser(JSON.parse(stored));
-            api.get('/auth/me')
-                .then((res) => {
-                    setUser(res.data.user);
-                    localStorage.setItem('user', JSON.stringify(res.data.user));
-                })
-                .catch(() => {
-                    localStorage.removeItem('user');
-                    setUser(null);
-                })
-                .finally(() => setLoading(false));
-        } else {
-            setLoading(false);
+        const currentUser = Parse.User.current();
+        if (currentUser) {
+            setUser(serializeUser(currentUser));
         }
+        setLoading(false);
     }, []);
 
     async function login(email, password) {
-        const res = await api.post('/auth/login', { email, password });
-        const { user: userData } = res.data;
-        localStorage.setItem('user', JSON.stringify(userData));
-        setUser(userData);
-        fetchCartRef.current?.();
-        return res.data;
+        try {
+            // Parse uses username for login; we allow email as username
+            const parseUser = await Parse.User.logIn(email, password);
+            const userData = serializeUser(parseUser);
+            localStorage.setItem('user', JSON.stringify(userData));
+            setUser(userData);
+            fetchCartRef.current?.();
+            return { data: { user: userData } };
+        } catch (err) {
+            throw { response: { data: { message: err.message } } };
+        }
     }
 
     async function register(firstName, lastName, email, password) {
-        const res = await api.post('/auth/register', { firstName, lastName, email, password });
-        const { user: userData } = res.data;
-        localStorage.setItem('user', JSON.stringify(userData));
-        setUser(userData);
-        fetchCartRef.current?.();
-        return res.data;
+        try {
+            const user = new Parse.User();
+            user.set("username", email);
+            user.set("email", email);
+            user.set("password", password);
+            user.set("firstName", firstName);
+            user.set("lastName", lastName);
+            user.set("role", "customer");
+            user.set("isEmailVerified", false);
+            user.set("isActive", true);
+
+            const parseUser = await user.signUp();
+            const userData = serializeUser(parseUser);
+            localStorage.setItem('user', JSON.stringify(userData));
+            setUser(userData);
+            fetchCartRef.current?.();
+            return { data: { user: userData } };
+        } catch (err) {
+            throw { response: { data: { message: err.message } } };
+        }
     }
 
     async function logout() {
-        await api.post('/auth/logout').catch(() => {});
+        try {
+            await Parse.User.logOut();
+        } catch (err) {
+            // ignore logout errors
+        }
         localStorage.removeItem('user');
         setUser(null);
     }
 
     async function updateProfile(data) {
-        const res = await api.put('/auth/profile', data);
-        setUser(res.data.user);
-        localStorage.setItem('user', JSON.stringify(res.data.user));
-        return res.data;
+        try {
+            const currentUser = Parse.User.current();
+            if (!currentUser) throw new Error('Not logged in');
+
+            const { firstName, lastName, phone, street, city, state, zipCode, country } = data;
+            if (firstName) currentUser.set('firstName', firstName);
+            if (lastName) currentUser.set('lastName', lastName);
+            if (phone) currentUser.set('phone', phone);
+            if (street) currentUser.set('street', street);
+            if (city) currentUser.set('city', city);
+            if (state) currentUser.set('state', state);
+            if (zipCode) currentUser.set('zipCode', zipCode);
+            if (country) currentUser.set('country', country);
+
+            const updatedUser = await currentUser.save();
+            const userData = serializeUser(updatedUser);
+            localStorage.setItem('user', JSON.stringify(userData));
+            setUser(userData);
+            return { data: { user: userData } };
+        } catch (err) {
+            throw { response: { data: { message: err.message } } };
+        }
     }
 
     async function forgotPassword(email) {
-        const res = await api.post('/auth/forgot-password', { email });
-        return res.data;
+        try {
+            await Parse.User.requestPasswordReset(email);
+            return { data: { message: 'Password reset email sent' } };
+        } catch (err) {
+            throw { response: { data: { message: err.message } } };
+        }
     }
 
+    // Parse handles password reset via email link, not a token URL
+    // This is kept for API compatibility but Parse uses email-based reset
     async function resetPassword(token, password) {
-        const res = await api.put(`/auth/reset-password/${token}`, { password });
-        return res.data;
+        try {
+            // Parse doesn't support token-based reset from client.
+            // Use Parse.User.requestPasswordReset(email) instead.
+            throw new Error('Use forgotPassword to request a reset link via email.');
+        } catch (err) {
+            throw { response: { data: { message: err.message } } };
+        }
     }
 
     return (

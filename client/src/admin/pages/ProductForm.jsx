@@ -1,6 +1,6 @@
 import { useState, useRef } from 'react';
 import { Upload, X, Loader2 } from 'lucide-react';
-import api from '../../services/api';
+import { adminService } from '../../services/adminService';
 import { imageUrl } from '../../services/imageUrl';
 import './ProductForm.css';
 
@@ -16,7 +16,7 @@ export default function ProductForm({ product, categories, onClose, onSuccess })
         description: product?.description || '',
         price: product?.price || '',
         discountPrice: product?.discountPrice || '',
-        category: product?.category?._id || product?.category || '',
+        category: product?.categoryId || product?.category?._id || product?.category || '',
         stock: product?.stock ?? '',
         isFeatured: product?.isFeatured || false,
         isActive: product?.isActive ?? true,
@@ -54,16 +54,10 @@ export default function ProductForm({ product, categories, onClose, onSuccess })
         setError('');
 
         try {
-            const formData = new FormData();
-            files.forEach((file) => formData.append('images', file));
-
-            const { data } = await api.post('/products/upload', formData, {
-                headers: { 'Content-Type': 'multipart/form-data' },
-            });
-
-            setImages((prev) => [...prev, ...data.images]);
+            const uploadedUrls = await Promise.all(files.map((file) => adminService.uploadFile(file)));
+            setImages((prev) => [...prev, ...uploadedUrls]);
         } catch (err) {
-            setError(err.response?.data?.message || 'Image upload failed');
+            setError(err.message || 'Image upload failed');
         } finally {
             setUploading(false);
             if (fileInputRef.current) fileInputRef.current.value = '';
@@ -95,14 +89,14 @@ export default function ProductForm({ product, categories, onClose, onSuccess })
             };
 
             if (isEdit) {
-                await api.put(`/products/${product._id}`, payload);
+                await adminService.updateProduct(product._id, payload);
             } else {
-                await api.post('/products', payload);
+                await adminService.createProduct(payload);
             }
 
             onSuccess();
         } catch (err) {
-            setError(err.response?.data?.message || 'Failed to save product');
+            setError(err.message || 'Failed to save product');
         } finally {
             setSubmitting(false);
         }
