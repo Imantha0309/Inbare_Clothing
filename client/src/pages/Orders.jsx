@@ -68,18 +68,19 @@ export default function Orders() {
       ) : (
         <div className="orders-list">
           {orders.map((order) => {
-            const isExpanded = expandedId === order._id;
+            const orderId = String(order.id);
+            const isExpanded = expandedId === order.id;
             const date = new Date(order.createdAt).toLocaleDateString('en-US', {
               year: 'numeric', month: 'long', day: 'numeric',
             });
             return (
-              <div key={order._id} className="orders-card">
+              <div key={order.id} className="orders-card">
                 <button
                   className="orders-card-header"
-                  onClick={() => setExpandedId(isExpanded ? null : order._id)}
+                  onClick={() => setExpandedId(isExpanded ? null : order.id)}
                 >
                   <div className="orders-card-left">
-                    <span className="orders-id">#{order._id.slice(-8).toUpperCase()}</span>
+                    <span className="orders-id">#{orderId.slice(-8).toUpperCase()}</span>
                     <span className="orders-date">{date}</span>
                     <span
                       className="orders-status"
@@ -89,7 +90,7 @@ export default function Orders() {
                     </span>
                   </div>
                   <div className="orders-card-right">
-                    <span className="orders-total">LKR {order.totalAmount.toLocaleString('en-US')}</span>
+                    <span className="orders-total">LKR {Number(order.totalAmount || 0).toLocaleString('en-US')}</span>
                     {isExpanded ? <ChevronUp size={18} /> : <ChevronDown size={18} />}
                   </div>
                 </button>
@@ -112,7 +113,7 @@ export default function Orders() {
                               </span>
                             </div>
                             <span className="orders-item-price">
-                              LKR {(item.price * item.quantity).toLocaleString('en-US')}
+                              LKR {Number(item.price || 0).toLocaleString('en-US')}
                             </span>
                           </div>
                         );
@@ -122,11 +123,10 @@ export default function Orders() {
                       <span>Payment: {order.paymentMethod?.replace('_', ' ')}</span>
                       <span>Status: {order.paymentStatus}</span>
                     </div>
-                    {order.shippingAddress && (
+                    {order.street && (
                       <div className="orders-detail-row">
                         <span>
-                          Ship to: {order.shippingAddress.street}, {order.shippingAddress.city},
-                          {order.shippingAddress.state}, {order.shippingAddress.country}
+                          Ship to: {order.street}, {order.city}, {order.state}, {order.country}
                         </span>
                       </div>
                     )}

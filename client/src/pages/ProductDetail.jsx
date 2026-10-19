@@ -55,11 +55,11 @@ export default function ProductDetail() {
     ? product.images.map((id) => imageUrl(id))
     : ['https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=800'];
 
-  const price = product.discountPrice && product.discountPrice < product.price
-    ? product.discountPrice
-    : product.price;
+  const price = product.discountPrice && Number(product.discountPrice) < Number(product.price)
+    ? Number(product.discountPrice)
+    : Number(product.price);
 
-  const hasDiscount = product.discountPrice && product.discountPrice < product.price;
+  const hasDiscount = product.discountPrice && Number(product.discountPrice) < Number(product.price);
 
   function handleAdd() {
     if (!selectedSize && product.sizes?.length && !(product.sizes.length === 1 && product.sizes[0] === 'One Size')) return;
@@ -131,8 +131,8 @@ export default function ProductDetail() {
             <span className="pd-current">LKR {price.toLocaleString('en-US')}</span>
             {hasDiscount && (
               <>
-                <span className="pd-original">LKR {product.price.toLocaleString('en-US')}</span>
-                <span className="pd-badge">-{Math.round((1 - product.discountPrice / product.price) * 100)}%</span>
+                <span className="pd-original">LKR {Number(product.price).toLocaleString('en-US')}</span>
+                <span className="pd-badge">-{Math.round((1 - Number(product.discountPrice) / Number(product.price)) * 100)}%</span>
               </>
             )}
           </div>

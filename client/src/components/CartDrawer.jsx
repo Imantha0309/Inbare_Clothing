@@ -46,7 +46,7 @@ export function CartDrawer() {
                         <p className="cart-item-meta">Size: {item.selectedSize}</p>
                       )}
                     </div>
-                    <p className="cart-item-price">LKR {(item.price * item.qty).toLocaleString('en-US')}</p>
+                    <p className="cart-item-price">LKR {Number(item.price || 0).toLocaleString('en-US')}</p>
                   </div>
 
                   <div className="cart-item-actions">

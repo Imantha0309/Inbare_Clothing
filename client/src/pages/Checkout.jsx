@@ -325,7 +325,7 @@ export default function Checkout() {
                 <span>
                   {appliedCoupon.code} — {appliedCoupon.discountType === 'percent'
                     ? `${appliedCoupon.discountValue}% off`
-                    : `LKR ${appliedCoupon.discountValue.toLocaleString('en-US')} off`}
+                    : `LKR ${Number(appliedCoupon.discountValue).toLocaleString('en-US')} off`}
                 </span>
               </div>
             )}

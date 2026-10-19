@@ -13,9 +13,9 @@ function WishlistCard({ product }) {
   const [added, setAdded] = useState(false);
 
   const img = imageUrl(product.images?.[0]) || 'https://images.unsplash.com/photo-1521572163474-6864f9cf17ab?q=80&w=600';
-  const price = product.discountPrice && product.discountPrice < product.price
-    ? product.discountPrice
-    : product.price;
+  const price = product.discountPrice && Number(product.discountPrice) < Number(product.price)
+    ? Number(product.discountPrice)
+    : Number(product.price);
 
   function handleAdd() {
     addToCart({
