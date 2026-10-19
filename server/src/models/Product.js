@@ -55,7 +55,9 @@ const Product = sequelize.define('Product', {
         allowNull: false,
         references: {
             model: 'categories',
-            key: 'id'
+            key: 'id',
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         }
     },
     colors: {

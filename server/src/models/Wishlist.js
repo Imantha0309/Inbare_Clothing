@@ -13,7 +13,9 @@ const Wishlist = sequelize.define('Wishlist', {
         unique: true,
         references: {
             model: 'users',
-            key: 'id'
+            key: 'id',
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         }
     },
     products: {

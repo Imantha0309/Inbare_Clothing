@@ -13,7 +13,9 @@ const Cart = sequelize.define('Cart', {
         unique: true,
         references: {
             model: 'users',
-            key: 'id'
+            key: 'id',
+            onDelete: 'CASCADE',
+            onUpdate: 'CASCADE',
         }
     },
     items: {

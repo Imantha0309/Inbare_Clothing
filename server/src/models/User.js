@@ -117,6 +117,9 @@ const User = sequelize.define('User', {
 }, {
     tableName: 'users',
     timestamps: true,
+    defaultAttributes: {
+        exclude: ['password'],
+    },
     indexes: [
         { fields: ['email'] },
         { fields: ['role'] }
