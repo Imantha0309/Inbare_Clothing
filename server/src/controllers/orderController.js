@@ -7,58 +7,81 @@ import { sendOrderConfirmation } from "../utils/email.js";
 import { sequelize } from "../config/database.js";
 
 export const createOrder = async (req, res, next) => {
+    const t = await sequelize.transaction();
     try {
         const { shippingAddress, paymentMethod, note, couponCode } = req.body;
 
-        const cart = await Cart.findOne({ where: { userId: req.user.id } });
+        const cart = await Cart.findOne({ where: { userId: req.user.id }, transaction: t });
         if (!cart || !cart.items || cart.items.length === 0) {
+            await t.rollback();
             return res.status(400).json({
                 success: false,
                 message: "Cart is empty",
             });
         }
 
+        // Lock product rows to prevent concurrent overselling
+        const productIds = cart.items.map((item) => item.product);
+        const products = await Product.findAll({
+            where: { id: productIds },
+            transaction: t,
+            lock: true,
+        });
+        const productMap = {};
+        products.forEach((p) => { productMap[p.id] = p; });
+
+        let totalAmount = 0;
         for (const item of cart.items) {
-            const product = await Product.findByPk(item.product);
+            const product = productMap[item.product];
             if (!product) {
+                await t.rollback();
                 return res.status(404).json({
                     success: false,
                     message: `Product not found: ${item.name}`,
                 });
             }
             if (product.stock < item.quantity) {
+                await t.rollback();
                 return res.status(400).json({
                     success: false,
                     message: `Insufficient stock for ${item.name}`,
                 });
             }
+            totalAmount += (product.discountPrice || product.price) * item.quantity;
         }
 
-        let totalAmount = cart.totalAmount;
         let discountAmount = 0;
         let appliedCouponCode = null;
 
         if (couponCode) {
-            const coupon = await Coupon.findOne({ where: { code: couponCode.toUpperCase() } });
+            const coupon = await Coupon.findOne({
+                where: { code: couponCode.toUpperCase() },
+                transaction: t,
+                lock: true,
+            });
             if (!coupon || !coupon.isActive) {
+                await t.rollback();
                 return res.status(400).json({
                     success: false,
                     message: "Invalid coupon code",
                 });
             }
             if (coupon.expiresAt && coupon.expiresAt < new Date()) {
+                await t.rollback();
                 return res.status(400).json({
                     success: false,
                     message: "This coupon has expired",
                 });
             }
             if (coupon.maxUses !== null && coupon.usedCount >= coupon.maxUses) {
+                await t.rollback();
                 return res.status(400).json({
                     success: false,
                     message: "This coupon has reached its usage limit",
                 });
             }
             if (totalAmount < coupon.minOrderAmount) {
+                await t.rollback();
                 return res.status(400).json({
                     success: false,
                     message: `Minimum order amount for this coupon is LKR ${coupon.minOrderAmount}`,
@@ -74,7 +97,7 @@ export const createOrder = async (req, res, next) => {
             totalAmount = Math.max(0, totalAmount - discountAmount);
             appliedCouponCode = coupon.code;
             coupon.usedCount += 1;
-            await coupon.save();
+            await coupon.save({ transaction: t });
         }
 
         const order = await Order.create({
@@ -98,23 +121,16 @@ export const createOrder = async (req, res, next) => {
             note,
             couponCode: appliedCouponCode,
             discountAmount,
-        });
+        }, { transaction: t });
 
+        // Decrement stock within the transaction
         for (const item of cart.items) {
-            const product = await Product.findByPk(item.product);
-            if (!product || product.stock < item.quantity) {
-                await order.destroy();
-                return res.status(400).json({
-                    success: false,
-                    message: `Insufficient stock for ${item.name}`,
-                });
-            }
-            await product.update({
-                stock: sequelize.literal('stock - ' + item.quantity)
-            });
+            await productMap[item.product].decrement('stock', { by: item.quantity, transaction: t });
         }
 
-        await cart.update({ items: [] });
+        await cart.update({ items: [] }, { transaction: t });
+
+        await t.commit();
 
         const orderUser = await User.findByPk(req.user.id);
         if (orderUser) sendOrderConfirmation(order, orderUser);
@@ -125,6 +141,7 @@ export const createOrder = async (req, res, next) => {
             order,
         });
     } catch (error) {
+        await t.rollback();
         next(error);
     }
 };
@@ -213,21 +230,36 @@ export const getAllOrders = async (req, res, next) => {
 };
 
 export const updateOrderStatus = async (req, res, next) => {
+    const t = await sequelize.transaction();
     try {
         const { orderStatus, paymentStatus } = req.body;
 
-        const order = await Order.findByPk(req.params.id);
+        const order = await Order.findByPk(req.params.id, { transaction: t });
         if (!order) {
+            await t.rollback();
             return res.status(404).json({
                 success: false,
                 message: "Order not found",
             });
         }
 
+        const previousStatus = order.orderStatus;
         const updates = {};
         if (orderStatus) updates.orderStatus = orderStatus;
         if (paymentStatus) updates.paymentStatus = paymentStatus;
-        await order.update(updates);
+        await order.update(updates, { transaction: t });
+
+        // Restore stock when an order is cancelled
+        if (orderStatus === "cancelled" && previousStatus !== "cancelled" && order.items) {
+            for (const item of order.items) {
+                const product = await Product.findByPk(item.product, { transaction: t });
+                if (product) {
+                    await product.increment('stock', { by: item.quantity, transaction: t });
+                }
+            }
+        }
+
+        await t.commit();
 
         res.status(200).json({
             success: true,
@@ -235,6 +267,7 @@ export const updateOrderStatus = async (req, res, next) => {
             order,
         });
     } catch (error) {
+        await t.rollback();
         next(error);
     }
 };
